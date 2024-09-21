@@ -1,10 +1,11 @@
 {
   "name": "whatsapp",
   "version": "1.0.0",
-  "description": "Proyecto que envia mensajes",
+  "description": "Proyecto que envía mensajes",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "mkdir -p public && cp -r src/* public/" // Ajusta este comando según tu herramienta de construcción
   },
   "keywords": [],
   "author": "",
