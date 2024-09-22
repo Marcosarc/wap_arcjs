@@ -1,6 +1,7 @@
 const express = require('express');
 const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
+const fs = require('fs');
 
 const app = express();
 const port = 3000;
@@ -20,6 +21,7 @@ app.get('/', (req, res) => {
                 <div id="status"></div>
                 <div id="qr-container"></div>
                 <button id="init-button" onclick="initializeWhatsApp()">Iniciar WhatsApp</button>
+                <button id="close-button" onclick="closeWhatsApp()" style="display:none;">Cerrar WhatsApp</button>
                 <script>
                     function initializeWhatsApp() {
                         fetch('/initialize')
@@ -27,6 +29,17 @@ app.get('/', (req, res) => {
                             .then(data => {
                                 document.getElementById('status').innerHTML = data.message;
                                 checkStatus();
+                            });
+                    }
+
+                    function closeWhatsApp() {
+                        fetch('/close')
+                            .then(response => response.json())
+                            .then(data => {
+                                document.getElementById('status').innerHTML = data.message;
+                                document.getElementById('qr-container').innerHTML = '';
+                                document.getElementById('init-button').style.display = 'inline';
+                                document.getElementById('close-button').style.display = 'none';
                             });
                     }
 
@@ -38,6 +51,7 @@ app.get('/', (req, res) => {
                                     document.getElementById('status').innerHTML = '<h2>WhatsApp está listo para recibir mensajes</h2>';
                                     document.getElementById('qr-container').innerHTML = '';
                                     document.getElementById('init-button').style.display = 'none';
+                                    document.getElementById('close-button').style.display = 'inline';
                                 } else if (data.qrCode) {
                                     document.getElementById('status').innerHTML = '<h2>Escanea el código QR con tu WhatsApp para iniciar sesión</h2>';
                                     document.getElementById('qr-container').innerHTML = '<img src="' + data.qrCode + '" alt="QR Code" />';
@@ -47,19 +61,6 @@ app.get('/', (req, res) => {
                                 }
                             });
                     }
-
-                    // Ejemplo de MutationObserver
-                    const targetNode = document.getElementById('status');
-                    const observer = new MutationObserver((mutationsList) => {
-                        for (const mutation of mutationsList) {
-                            if (mutation.type === 'childList') {
-                                console.log('Se han añadido o eliminado nodos hijos en #status.');
-                            }
-                        }
-                    });
-
-                    observer.observe(targetNode, { childList: true });
-
                 </script>
             </body>
         </html>
@@ -70,17 +71,25 @@ app.get('/initialize', (req, res) => {
     console.log('Solicitud de inicialización recibida.');
 
     if (isInitializing || isClientReady) {
-        console.log('WhatsApp ya está inicializado o inicializando.');
-        res.json({ message: 'WhatsApp ya está inicializado o inicializando.' });
-        return;
+        console.log('Cerrando sesión anterior...');
+        closeWhatsAppSession();
     }
 
     isInitializing = true;
+    isClientReady = false;
+    qrCodeData = null;
+
+    // Borrar el archivo de sesión si existe
+    if (fs.existsSync('./session.json')) {
+        fs.unlinkSync('./session.json');
+    }
+
     client = new Client({
         puppeteer: {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
-        }
+        },
+        session: null // Forzar nueva sesión
     });
 
     client.on('qr', async (qr) => {
@@ -115,6 +124,22 @@ app.get('/initialize', (req, res) => {
 
     res.json({ message: 'Inicializando cliente de WhatsApp...' });
 });
+
+app.get('/close', (req, res) => {
+    closeWhatsAppSession();
+    res.json({ message: 'Sesión de WhatsApp cerrada.' });
+});
+
+function closeWhatsAppSession() {
+    if (client) {
+        client.destroy();
+        client = null;
+    }
+    isClientReady = false;
+    isInitializing = false;
+    qrCodeData = null;
+    console.log('Sesión de WhatsApp cerrada.');
+}
 
 app.get('/status', (req, res) => {
     res.json({ ready: isClientReady, qrCode: qrCodeData });
