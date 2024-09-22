@@ -47,6 +47,19 @@ app.get('/', (req, res) => {
                                 }
                             });
                     }
+
+                    // Ejemplo de MutationObserver
+                    const targetNode = document.getElementById('status');
+                    const observer = new MutationObserver((mutationsList) => {
+                        for (const mutation of mutationsList) {
+                            if (mutation.type === 'childList') {
+                                console.log('Se han añadido o eliminado nodos hijos en #status.');
+                            }
+                        }
+                    });
+
+                    observer.observe(targetNode, { childList: true });
+
                 </script>
             </body>
         </html>
