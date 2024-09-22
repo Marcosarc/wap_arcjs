@@ -54,7 +54,10 @@ app.get('/', (req, res) => {
 });
 
 app.get('/initialize', (req, res) => {
+    console.log('Solicitud de inicialización recibida.');
+
     if (isInitializing || isClientReady) {
+        console.log('WhatsApp ya está inicializado o inicializando.');
         res.json({ message: 'WhatsApp ya está inicializado o inicializando.' });
         return;
     }
@@ -79,13 +82,23 @@ app.get('/initialize', (req, res) => {
     });
 
     client.on('message_create', message => {
-        console.log(message.body);
+        console.log('Mensaje recibido:', message.body);
         if (message.body === '!ping') {
             message.reply('pong');
         }
     });
 
-    client.initialize();
+    client.on('error', (error) => {
+        console.error('Error del cliente:', error);
+    });
+
+    client.initialize()
+        .then(() => {
+            console.log('Cliente de WhatsApp inicializado con éxito.');
+        })
+        .catch(err => {
+            console.error('Error al inicializar el cliente de WhatsApp:', err);
+        });
 
     res.json({ message: 'Inicializando cliente de WhatsApp...' });
 });
@@ -98,10 +111,12 @@ app.get('/send-message', async (req, res) => {
     const { phone, message } = req.query;
 
     if (!phone || !message) {
+        console.error('Error: Se requieren los parámetros phone y message');
         return res.status(400).json({ error: 'Se requieren los parámetros phone y message' });
     }
 
     if (!isClientReady) {
+        console.log('Cliente de WhatsApp aún no está listo.');
         return res.status(503).json({ error: 'El cliente de WhatsApp aún no está listo. Por favor, espera.' });
     }
 
